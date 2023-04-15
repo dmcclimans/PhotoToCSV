@@ -1,4 +1,4 @@
-PhotoToCSFV                 1.0     2023-03-30
-    Visual Studio 2022      17.5.3
+PhotoToCSFV                 1.1     2023-04-15
+    Visual Studio 2022      17.5.4
     FileHelpers             3.5.2
 

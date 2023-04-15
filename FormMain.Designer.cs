@@ -39,12 +39,14 @@
             label3 = new Label();
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
+            loadSpeciesListToolStripMenuItem = new ToolStripMenuItem();
             exitToolStripMenuItem = new ToolStripMenuItem();
             helpToolStripMenuItem = new ToolStripMenuItem();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             btnRun = new Button();
             statusStrip1 = new StatusStrip();
             toolStripStatusLabel1 = new ToolStripStatusLabel();
+            clearSpeciesListToolStripMenuItem = new ToolStripMenuItem();
             menuStrip1.SuspendLayout();
             statusStrip1.SuspendLayout();
             SuspendLayout();
@@ -145,16 +147,23 @@
             // 
             // fileToolStripMenuItem
             // 
-            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { exitToolStripMenuItem });
+            fileToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { loadSpeciesListToolStripMenuItem, clearSpeciesListToolStripMenuItem, exitToolStripMenuItem });
             fileToolStripMenuItem.Name = "fileToolStripMenuItem";
             fileToolStripMenuItem.Size = new Size(54, 29);
             fileToolStripMenuItem.Text = "File";
             // 
+            // loadSpeciesListToolStripMenuItem
+            // 
+            loadSpeciesListToolStripMenuItem.Name = "loadSpeciesListToolStripMenuItem";
+            loadSpeciesListToolStripMenuItem.Size = new Size(270, 34);
+            loadSpeciesListToolStripMenuItem.Text = "&Load species list...";
+            loadSpeciesListToolStripMenuItem.Click += loadSpeciesListToolStripMenuItem_Click;
+            // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(141, 34);
-            exitToolStripMenuItem.Text = "Exit";
+            exitToolStripMenuItem.Size = new Size(270, 34);
+            exitToolStripMenuItem.Text = "E&xit";
             exitToolStripMenuItem.Click += exitToolStripMenuItem_Click;
             // 
             // helpToolStripMenuItem
@@ -196,6 +205,13 @@
             // 
             toolStripStatusLabel1.Name = "toolStripStatusLabel1";
             toolStripStatusLabel1.Size = new Size(0, 15);
+            // 
+            // clearSpeciesListToolStripMenuItem
+            // 
+            clearSpeciesListToolStripMenuItem.Name = "clearSpeciesListToolStripMenuItem";
+            clearSpeciesListToolStripMenuItem.Size = new Size(270, 34);
+            clearSpeciesListToolStripMenuItem.Text = "&Clear species list";
+            clearSpeciesListToolStripMenuItem.Click += clearSpeciesListToolStripMenuItem_Click;
             // 
             // FormMain
             // 
@@ -248,5 +264,7 @@
         private ToolStripStatusLabel toolStripStatusLabel1;
         private ToolStripMenuItem exitToolStripMenuItem;
         private ToolStripMenuItem aboutToolStripMenuItem;
+        private ToolStripMenuItem loadSpeciesListToolStripMenuItem;
+        private ToolStripMenuItem clearSpeciesListToolStripMenuItem;
     }
 }

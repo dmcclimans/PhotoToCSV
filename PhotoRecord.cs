@@ -24,6 +24,9 @@ namespace PhotoToCSV
         [FieldQuoted]
         public string Keywords { get; set; } = "";
 
+        [FieldQuoted]
+        public string Description { get; set; } = "";
+
         // These fields do not exist in the input file.
         // We set their value when processing the file.
         [FieldHidden]
@@ -33,7 +36,19 @@ namespace PhotoToCSV
         public bool Dup { get; set; } = false;
 
         [FieldHidden]
-        public int Quantity {  get; set; }  
+        public int? MaleCount { get; set; } = null;
+
+        [FieldHidden]
+        public int? FemaleCount { get; set; } = null;
+
+        [FieldHidden]
+        public int? JuvenileCount { get; set; } = null;
+
+        [FieldHidden]
+        public int? UnknownCount {  get; set; } = null;
+
+        [FieldHidden]
+        public string? Direction { get; set; }
 
         [FieldHidden]
         public List<string> Species { get; set; } = new List<string>();

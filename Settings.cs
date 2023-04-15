@@ -58,6 +58,19 @@ namespace PhotoToCSV
             set { SetProperty(ref outputEncounterCSVFilenameValue, value, true); }
         }
 
+        // Species list does not fully implement INotifyPropertyChanged and IChangeTracking.
+        // If you set sepciesListValue to a new value, then everything works as expected.
+        // But if you add or remove to the list, or change an entry in the list, it does
+        // not invoke PropertyChanged, and it does not mark the class as modified.
+        // So whenever we change the list (which is only when loaded or cleared), we assign
+        // a new list to this property.
+        private List<string> speciesListValue = new List<string>();
+        public List<string> SpeciesList
+        {
+            get { return speciesListValue; }
+            set { SetProperty(ref speciesListValue, value, true); }
+        }
+
         // Properties which are not persisted, but trigger property changed.
         // none
 

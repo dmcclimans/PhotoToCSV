@@ -3,12 +3,18 @@ using System.Data;
 using System.Formats.Asn1;
 using FileHelpers;
 using CenteredMessageBox;
+using AudioSplit;
+using System.ComponentModel;
+using System.IO;
+using System.Text;
 
 namespace PhotoToCSV
 {
     public partial class FormMain : Form
     {
         private Settings Settings { get; set; } = new Settings();
+
+        private List<string> UnrecognizedSpecies { get; set; } = new List<string>();
 
         public FormMain()
         {
@@ -177,7 +183,7 @@ namespace PhotoToCSV
 
                 Cursor.Current = Cursors.WaitCursor;
 
-                // TBD: Uncomment this.
+                // Run exiftool to produce the photo file.
                 RunExiftool();
 
                 // Read the file produced by exiftools.
@@ -200,6 +206,18 @@ namespace PhotoToCSV
                 writeEngine.WriteFile(Settings.OutputEncounterCSVFilename, encounters);
 
                 Cursor.Current = Cursors.Default;
+
+                // If unrecognized species found, report them.
+                if (UnrecognizedSpecies.Count > 0)
+                {
+                    StringBuilder sb = new StringBuilder("The following species were found but are not in the Species list");
+                    sb.AppendLine();
+                    foreach (string s in UnrecognizedSpecies)
+                    {
+                        sb.Append("\t").AppendLine(s);
+                    }
+                    MessageBoxEx.Show(this, sb.ToString());
+                }
 
                 //MessageBoxEx.Show(this, "Done", MessageBoxButtons.OK);
                 toolStripStatusLabel1.Text = "Done";
@@ -271,13 +289,16 @@ namespace PhotoToCSV
         {
             ExecuteCommand cmd = new ExecuteCommand();
             string cmdString =
-                "exiftool" +                                    // Run exiftool
-                " -q -q" +                                      // Suppress info messages and warnings
-                " -csv" +                                       // Write csv file
-                " -d \"%Y/%m/%d %H:%M:%S\"" +                   // Format used for date/time fields
-                " -DateTimeOriginal -Keywords " +               // Fields to write
+                "exiftool" +                                        // Run exiftool
+                " -q -q" +                                          // Suppress info messages and warnings
+                " -csv" +                                           // Write csv file
+                " -f" +                                             // Force all columns to exist even if empty.
+                " -api \"missingtagvalue^=\"" +                     // Write empty string for empty fields. The quoted missingtagvalue^=
+                                                                    // is an exiftool workaround to force an option to an empty string.
+                " -d \"%Y/%m/%d %H:%M:%S\"" +                       // Format used for date/time fields
+                " -DateTimeOriginal -Keywords -Description" +       // Fields to write
                 " >\"" + Settings.OutputPhotoCSVFilename + "\"" +   // Output file
-                " \"" + Settings.InputFolder + "\"";            // Input folder
+                " \"" + Settings.InputFolder + "\"";                // Input folder
             string s = cmd.ExecuteDOSCommandSync(cmdString);
             if (!string.IsNullOrWhiteSpace(s))
             {
@@ -287,33 +308,90 @@ namespace PhotoToCSV
 
         private void ProcessKeywords(PhotoRecord[] photoRecords)
         {
+            UnrecognizedSpecies = new List<string>();
             foreach (PhotoRecord rec in photoRecords)
             {
                 int qty = 0;
                 string[] keywords = rec.Keywords.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                 foreach (string keyword in keywords)
                 {
-                    if (string.Equals(keyword, "dup", StringComparison.OrdinalIgnoreCase))
+                    if (keyword.Length == 0)
+                    {
+                        // Shouldn't happen, ignore it if it does.
+                    }
+                    else if (string.Equals(keyword, "dup", StringComparison.OrdinalIgnoreCase))
                     {
                         rec.Dup = true;
+                    }
+                    else if (string.Equals(keyword.SubstringWithMaxLength(0, 3), "cam", StringComparison.OrdinalIgnoreCase) &&
+                        int.TryParse(keyword.AsSpan(3), out _))
+                    {
+                        rec.CamName = keyword.Substring(3);
+                    }
+                    else if (string.Equals(keyword, "DirToward", StringComparison.OrdinalIgnoreCase))
+                    {
+                        rec.Direction = "Toward";
+                    }
+                    else if (string.Equals(keyword, "DirAway", StringComparison.OrdinalIgnoreCase))
+                    {
+                        rec.Direction = "Away";
+                    }
+                    else if (string.Equals(keyword, "DirUncertain", StringComparison.OrdinalIgnoreCase))
+                    {
+                        rec.Direction = "Uncertain";
                     }
                     else if (string.Equals(keyword, "f", StringComparison.OrdinalIgnoreCase) ||
                              string.Equals(keyword, "l", StringComparison.OrdinalIgnoreCase))
                     {
                         // Ignore F and L keywords
                     }
-                    else if (string.Equals(keyword.Substring(0, 3), "cam", StringComparison.OrdinalIgnoreCase) &&
-                        int.TryParse(keyword.AsSpan(3), out _))
+                    else if (char.ToUpper(keyword[0]).Equals('M') &&
+                             int.TryParse(keyword.Substring(1), out qty))
                     {
-                        rec.CamName = keyword.Substring(3);
+                        rec.MaleCount = qty;
                     }
-                    else if (int.TryParse(keyword, out qty))
+                    else if (char.ToUpper(keyword[0]).Equals('F') &&
+                             int.TryParse(keyword.Substring(1), out qty))
                     {
-                        rec.Quantity = qty;
+                        rec.FemaleCount = qty;
                     }
-                    else if (!rec.Species.Contains(keyword))
+                    else if (char.ToUpper(keyword[0]).Equals('J') &&
+                             int.TryParse(keyword.Substring(1), out qty))
                     {
-                        rec.Species.Add(keyword);
+                        rec.JuvenileCount = qty;
+                    }
+                    else if (char.ToUpper(keyword[0]).Equals('U') &&
+                             int.TryParse(keyword.Substring(1), out qty))
+                    {
+                        rec.UnknownCount = qty;
+                    }
+                    else if (int.TryParse(keyword, out qty) && rec.UnknownCount == null)
+                    {
+                        // Keywords that are integers are treated as "unknown". But they won't overwrite a
+                        // previous Unknown quantity.
+                        if (rec.UnknownCount == null)
+                        {
+                            rec.UnknownCount = qty;
+                        }
+                    }
+                    else
+                    {
+                        // Treat the keyword as a species
+                        if (!rec.Species.Contains(keyword, StringComparer.OrdinalIgnoreCase))
+                        {
+                            // Add it to the species list for this photo.
+                            rec.Species.Add(keyword);
+
+                            // Check it against our species list
+                            if (Settings.SpeciesList.Count > 0)
+                            {
+                                if (!Settings.SpeciesList.Contains(keyword, StringComparer.OrdinalIgnoreCase) && 
+                                    !UnrecognizedSpecies.Contains(keyword, StringComparer.OrdinalIgnoreCase))
+                                {
+                                    UnrecognizedSpecies.Add(keyword);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -337,11 +415,46 @@ namespace PhotoToCSV
                     endIndex++;
                 }
 
-                // Get list of species in this encounter
+                // Iterate over the photo records that are part of this encounter.
+                // Get the counts of individuals. For each type (Male, Female, Juvenile,
+                // Unknown), record the count the first time one is seen.
+                // Similarly, the direction is the first one seen
+                // And the notes is the first description seen.
                 List<string> encounterSpeciesList = new List<string>();
+                int? maleCount = null;
+                int? femaleCount = null;
+                int? juvenileCount = null;
+                int? unknownCount = null;
+                string? direction = null;
+                string? notes = null;
                 for (int i = startIndex; i < endIndex; i++)
                 {
                     encounterSpeciesList.AddRange(photoRecords[i].Species);
+                    if (photoRecords[i].MaleCount != null && maleCount == null)
+                    {
+                        maleCount = photoRecords[i].MaleCount;
+                    }
+                    if (photoRecords[i].FemaleCount != null && femaleCount == null)
+                    {
+                        femaleCount = photoRecords[i].FemaleCount;
+                    }
+                    if (photoRecords[i].JuvenileCount != null && juvenileCount == null)
+                    {
+                        juvenileCount = photoRecords[i].JuvenileCount;
+                    }
+                    if (photoRecords[i].UnknownCount != null && unknownCount == null)
+                    {
+                        unknownCount = photoRecords[i].UnknownCount;
+                    }
+                    if (photoRecords[i].Direction != null && direction == null)
+                    {
+                        direction = photoRecords[i].Direction;
+                    }
+                    if (!string.IsNullOrWhiteSpace(photoRecords[i].Description) &&
+                        notes == null)
+                    {
+                        notes = photoRecords[i].Description;
+                    }
                 }
                 encounterSpeciesList = encounterSpeciesList.Distinct().ToList();
 
@@ -361,18 +474,13 @@ namespace PhotoToCSV
                         encounterRec.ImageCount = endIndex - startIndex;
                     }
                     encounterRec.Species = encounterSpeciesList[speciesIndex];
-                    // Don't need to set some values because the default is correct.
-                    // encounterRec.MaleCount = null;
-                    // encounterRec.FemaleCount = null;
-                    // encounterRec.JuvenileCount= null;
-                    // encounterRec.UnknownCount = null;
-                    if (photoRecords[startIndex].Quantity != 0)
-                    {
-                        encounterRec.UnknownCount = photoRecords[startIndex].Quantity;
-                    }
+                    encounterRec.MaleCount = maleCount;
+                    encounterRec.FemaleCount = femaleCount;
+                    encounterRec.JuvenileCount = juvenileCount;
+                    encounterRec.UnknownCount = unknownCount;
                     encounterRec.TotalCount = string.Format("=SUM(G{0}:J{0})", encounters.Count + 2);
-                    // encounterRec.Direction = null;
-                    // encounterRec.Notes = null;
+                    encounterRec.Direction = direction;
+                    encounterRec.Notes = notes;   
 
                     // Add the encounter record to the list.
                     encounters.Add(encounterRec);
@@ -384,6 +492,66 @@ namespace PhotoToCSV
             }
 
             return encounters;
+        }
+
+        private void loadSpeciesListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.CheckFileExists = true;
+            dlg.Filter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+
+            if (dlg.ShowDialog() == DialogResult.OK)
+            {
+                List<string> speciesList = new List<string>();
+                try
+                {
+                    speciesList = File.ReadLines(dlg.FileName).ToList();
+                }
+                catch (Exception ex)
+                {
+                    MessageBoxEx.Show(this, ex.Message);
+                    return;
+                }
+
+                // Remove empty strings.
+                // Remove duplicate strings
+                speciesList.RemoveAll(s => string.IsNullOrEmpty(s));
+                speciesList = speciesList.Distinct().ToList();
+
+                // Check for multi-word species and warn user.
+                bool multiword = false;
+                foreach (string s in speciesList)
+                {
+                    if (s.Trim().IndexOf(' ') >= 0)
+                    {
+                        multiword = true;
+                        break;
+                    }
+                }
+                if (multiword)
+                {
+                    DialogResult result = MessageBoxEx.Show(this,
+                        "This list contains multi-word entries. Are you sure you want to use it?",
+                        MessageBoxButtons.OKCancel);
+                    if (result == DialogResult.Cancel)
+                        return;
+                }
+
+                Settings.SpeciesList = speciesList;
+            }
+        }
+
+        private void clearSpeciesListToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBoxEx.Show(this,
+                "Are you sure you want to clear the species list?",
+                MessageBoxButtons.YesNo);
+            if (result != DialogResult.Yes)
+                return;
+
+            // Do not use Clear(); Set a new value so that the settings are marked as changed and will
+            // be written on program exit.
+            Settings.SpeciesList = new List<string>();
         }
     }
 }
