@@ -1,7 +1,7 @@
 PhotoToCSV License Information
 ==============================
 
-2023-04-15
+2023-07-07
 
 PhotoToCSV is licensed under the MIT license. You may use the PhotoToCSV application in
 any way you like. You may copy, distribute and modify the PhotoToCSV software provided you

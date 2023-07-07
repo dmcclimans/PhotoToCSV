@@ -38,13 +38,13 @@ namespace PhotoToCSV
         [FieldQuoted]
         public string? Species { get; set; }
 
-        [FieldCaption("# Male")] 
+        [FieldCaption("# Male")]
         public int? MaleCount { get; set; }
 
-        [FieldCaption("# Female")] 
+        [FieldCaption("# Female")]
         public int? FemaleCount { get; set; }
 
-        [FieldCaption("# Juvenile")] 
+        [FieldCaption("# Juvenile")]
         public int? JuvenileCount { get; set; }
 
         [FieldCaption("# Unknown")]
@@ -58,6 +58,7 @@ namespace PhotoToCSV
         public string? Direction { get; set; }
 
         [FieldCaption("Notes")]
+        [FieldQuoted]
         public string? Notes { get; set; }
 
 

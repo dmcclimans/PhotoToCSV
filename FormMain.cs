@@ -385,7 +385,7 @@ namespace PhotoToCSV
                             // Check it against our species list
                             if (Settings.SpeciesList.Count > 0)
                             {
-                                if (!Settings.SpeciesList.Contains(keyword, StringComparer.OrdinalIgnoreCase) && 
+                                if (!Settings.SpeciesList.Contains(keyword, StringComparer.OrdinalIgnoreCase) &&
                                     !UnrecognizedSpecies.Contains(keyword, StringComparer.OrdinalIgnoreCase))
                                 {
                                     UnrecognizedSpecies.Add(keyword);
@@ -402,7 +402,7 @@ namespace PhotoToCSV
             List<EncounterRecord> encounters = new List<EncounterRecord>();
 
             // startIndex is the first record in an encounter. It's a non-dup record.
-            // endIndex is the index one beyond the end of an encounter. It's a non-dup 
+            // endIndex is the index one beyond the end of an encounter. It's a non-dup
             // record, or beyond the end of the photoRecords array.
             int startIndex = 0;
             int endIndex = 1;
@@ -458,6 +458,12 @@ namespace PhotoToCSV
                 }
                 encounterSpeciesList = encounterSpeciesList.Distinct().ToList();
 
+                // If no species tag was found, add an unknown tag
+                if (encounterSpeciesList.Count == 0)
+                {
+                    encounterSpeciesList.Add("unknown");
+                }
+
                 // Add one record for each species
                 for (int speciesIndex = 0; speciesIndex < encounterSpeciesList.Count; speciesIndex++)
                 {
@@ -480,7 +486,7 @@ namespace PhotoToCSV
                     encounterRec.UnknownCount = unknownCount;
                     encounterRec.TotalCount = string.Format("=SUM(G{0}:J{0})", encounters.Count + 2);
                     encounterRec.Direction = direction;
-                    encounterRec.Notes = notes;   
+                    encounterRec.Notes = notes;
 
                     // Add the encounter record to the list.
                     encounters.Add(encounterRec);

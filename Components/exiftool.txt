@@ -5,4 +5,6 @@ To build and run the application, download the latest version of exiftool from
 2. Unzip the file into this folder.
 3. Rename exiftool(-k).exe to exiftool.exe
 
+To see the version, run
+    exiftool -ver
 
